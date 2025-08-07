@@ -1,0 +1,675 @@
+<!-- analysis_app/templates/analysis_app/index.html -->
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Data Analyst - Django Version</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f9fafb; /* gray-50 */
+            --text-color: #1f2937; /* gray-800 */
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb; /* gray-200 */
+            --input-bg: #ffffff;
+            --button-bg: #f3f4f6; /* gray-200 */
+            --button-text: #374151; /* gray-700 */
+            --footer-text: #6b7280; /* gray-500 */
+        }
+        html.dark {
+            --bg-color: #111827; /* gray-900 */
+            --text-color: #f9fafb; /* gray-50 */
+            --card-bg: #1f2937; /* gray-800 */
+            --border-color: #374151; /* gray-700 */
+            --input-bg: #374151; /* gray-700 */
+            --button-bg: #374151; /* gray-700 */
+            --button-text: #d1d5db; /* gray-300 */
+            --footer-text: #9ca3af; /* gray-400 */
+        }
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3B82F6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+        .input-field {
+            background-color: var(--input-bg);
+            border-color: var(--border-color);
+            color: var(--text-color);
+        }
+        .action-button {
+             background-color: var(--button-bg);
+             color: var(--button-text);
+        }
+        .modal-card {
+            background-color: var(--card-bg);
+        }
+        /* Dark mode text fix for tables */
+        html.dark td, html.dark th {
+            color: var(--text-color);
+        }
+        .footer-icon {
+            color: var(--footer-text);
+            transition: color 0.2s;
+        }
+        .footer-icon:hover {
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-6xl card p-8 rounded-2xl shadow-lg border">
+        <!-- Header -->
+        <header class="text-center mb-6 relative">
+            <h1 class="text-4xl font-bold">Smart Data Analyst</h1>
+            <p class="text-lg text-gray-500 dark:text-gray-400 mt-1">আপনার সার্বজনীন ডেটা অ্যানালিস্ট এজেন্ট</p>
+            <button id="darkModeToggle" class="absolute top-0 right-0 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            </button>
+        </header>
+
+        <!-- Data Source Buttons -->
+        <div class="flex justify-center flex-wrap gap-4 mb-6">
+            <button id="uploadBtn" class="action-button flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                ফাইল আপলোড
+            </button>
+            <input type="file" id="file-upload-input" class="hidden" accept=".csv,.xlsx">
+            <button id="scrapeBtn" class="action-button flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 01-9-9m9-9a9 9 0 00-9-9" /></svg>
+                ওয়েব স্ক্র্যাপ
+            </button>
+            <button id="apiBtn" class="action-button flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                API সংযোগ
+            </button>
+            <button id="dbBtn" class="action-button flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                ডাটাবেস সংযোগ
+            </button>
+        </div>
+        
+        <div class="border-t pt-6" style="border-color: var(--border-color);">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Left Column: Input & Info -->
+                <div>
+                    <div id="datasetInfo" class="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border hidden" style="border-color: var(--border-color);">
+                        <h3 class="font-semibold text-lg mb-2">ডেটাসেটের তথ্য:</h3>
+                        <div class="flex justify-between text-gray-600 dark:text-gray-300">
+                            <span id="infoRows">সারি: ০</span>
+                            <span id="infoCols">কলাম: ০</span>
+                            <span id="infoFormat">ফরম্যাট: -</span>
+                        </div>
+                        <div id="dataPreview" class="mt-4 hidden overflow-x-auto">
+                            <h4 class="font-semibold text-md mb-2">ডেটার প্রিভিউ:</h4>
+                            <table id="previewTable" class="w-full text-sm text-left"></table>
+                        </div>
+                    </div>
+
+                    <h3 class="font-semibold text-lg mb-2">আপনার ডেটা সম্পর্কে জিজ্ঞাসা করুন:</h3>
+                    <textarea id="userQuery" rows="4" class="input-field w-full p-3 border rounded-lg mb-4" placeholder="যেমন: প্রতিটি ব্র্যান্ডের গড় রেটিং কত?"></textarea>
+                    
+                    <button id="analyzeButton" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center transition">
+                        <span id="buttonText">বিশ্লেষণ করুন</span>
+                        <div id="buttonLoader" class="loader hidden ml-3"></div>
+                    </button>
+
+                    <div id="downloadSection" class="mt-6 hidden">
+                        <h3 class="font-semibold text-lg mb-2">রিপোর্ট ডাউনলোড করুন:</h3>
+                        <div class="flex gap-2">
+                            <button id="pdfBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm">PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Output -->
+                <div id="reportOutput" class="space-y-6 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border min-h-[300px]" style="border-color: var(--border-color);">
+                     <div id="initialMessage" class="flex flex-col items-center justify-center h-full text-gray-400 text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        <p class="mt-4 text-lg">বিশ্লেষণের ফলাফল এখানে দেখানো হবে।</p>
+                        <p class="text-sm mt-1">শুরু করতে একটি ডেটা ফাইল আপলোড করুন এবং প্রশ্ন করুন।</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="w-full max-w-6xl mt-4 text-center">
+        <div class="flex justify-center items-center space-x-6">
+            <a href="https://www.facebook.com/taopi74/" target="_blank" class="footer-icon">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg>
+            </a>
+            <a href="https://www.instagram.com/taopi74/" target="_blank" class="footer-icon">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.024.06 1.378.06 3.808s-.012 2.784-.06 3.808c-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.024.048-1.378.06-3.808.06s-2.784-.013-3.808-.06c-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.048-1.024-.06-1.378-.06-3.808s.012-2.784.06-3.808c.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 016.08 2.525c.636-.247 1.363-.416 2.427-.465C9.53 2.013 9.884 2 12.315 2zM12 7a5 5 0 100 10 5 5 0 000-10zm0 8a3 3 0 110-6 3 3 0 010 6zm6.406-11.845a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5z" clip-rule="evenodd" /></svg>
+            </a>
+            <a href="https://www.linkedin.com/in/taopi74/" target="_blank" class="footer-icon">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            </a>
+            <a href="https://github.com/taopi74/" target="_blank" class="footer-icon">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.165 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" /></svg>
+            </a>
+            <a href="https://leetcode.com/u/taopi74/" target="_blank" class="footer-icon">
+                <svg class="w-6 h-6" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.483 0a1.374 1.374 0 0 0-1.374 1.374v9.735h-2.522V1.374A1.374 1.374 0 0 0 8.213 0H1.374A1.374 1.374 0 0 0 0 1.374v15.06a1.374 1.374 0 0 0 1.374 1.374h5.468v5.468a1.374 1.374 0 0 0 1.374 1.374h9.735a1.374 1.374 0 0 0 1.374-1.374v-5.468h5.468a1.374 1.374 0 0 0 1.374-1.374V1.374A1.374 1.374 0 0 0 22.626 0h-9.143zM22.626 16.434h-5.468v5.468h-9.735v-5.468H1.374V1.374h6.839v9.735h2.522V1.374h9.143v15.06z"></path></svg>
+            </a>
+        </div>
+    </footer>
+
+
+    <!-- Modals -->
+    <div id="scrapeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="modal-card p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">ওয়েব থেকে ডেটা স্ক্র্যাপ করুন</h2>
+            <input type="url" id="scrapeUrl" class="input-field w-full p-2 border rounded-lg mb-4" placeholder="https://en.wikipedia.org/wiki/List_of_countries_and_dependencies_by_population">
+             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">দ্রষ্টব্য: এই পদ্ধতিটি সাধারণ HTML টেবিলযুক্ত সাইটগুলির জন্য সবচেয়ে ভাল কাজ করে।</p>
+            <div class="flex justify-end gap-2">
+                <button id="scrapeCancel" class="action-button px-4 py-2 rounded-lg">বাতিল</button>
+                <button id="scrapeFetch" class="px-4 py-2 bg-blue-600 text-white rounded-lg">ডেটা স্ক্র্যাপ</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="apiModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="modal-card p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">API এর সাথে সংযোগ করুন</h2>
+            <label class="block text-sm font-medium mb-2">API URL</label>
+            <input type="url" id="apiUrl" class="input-field w-full p-2 border rounded-lg mb-4" placeholder="https://dummyjson.com/products">
+            <label class="block text-sm font-medium mb-2">Bearer Token (ঐচ্ছিক)</label>
+            <input type="text" id="apiToken" class="input-field w-full p-2 border rounded-lg mb-4" placeholder="আপনার API টোকেন">
+            <div class="flex justify-end gap-2">
+                <button id="apiCancel" class="action-button px-4 py-2 rounded-lg">বাতিল</button>
+                <button id="apiFetch" class="px-4 py-2 bg-blue-600 text-white rounded-lg">ডেটা আনুন</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="dbModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="modal-card p-6 rounded-lg shadow-xl w-full max-w-md text-center">
+            <h2 class="text-xl font-bold mb-4">Contact Me for Database Integration</h2>
+            <div class="text-left space-y-2">
+                <p><strong>Name:</strong> Tarqul Alam Opi</p>
+                <p><strong>Mobile:</strong> 01708772638</p>
+                <p><strong>Email:</strong> tarqulopi77@gmail.com</p>
+                <p><strong>Facebook:</strong> <a href="https://www.facebook.com/taopi74/" target="_blank" class="text-blue-500 hover:underline">facebook.com/taopi74</a></p>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button id="dbCancel" class="action-button px-4 py-2 rounded-lg">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- UI Elements ---
+            const uploadBtn = document.getElementById('uploadBtn');
+            const fileUploadInput = document.getElementById('file-upload-input');
+            const scrapeBtn = document.getElementById('scrapeBtn');
+            const apiBtn = document.getElementById('apiBtn');
+            const dbBtn = document.getElementById('dbBtn');
+            const analyzeButton = document.getElementById('analyzeButton');
+            const buttonText = document.getElementById('buttonText');
+            const buttonLoader = document.getElementById('buttonLoader');
+            const reportOutput = document.getElementById('reportOutput');
+            const initialMessage = document.getElementById('initialMessage');
+            const userQuery = document.getElementById('userQuery');
+            const datasetInfo = document.getElementById('datasetInfo');
+            const downloadSection = document.getElementById('downloadSection');
+            const pdfBtn = document.getElementById('pdfBtn');
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const moonIcon = document.getElementById('moonIcon');
+            const sunIcon = document.getElementById('sunIcon');
+            
+            // Modals
+            const scrapeModal = document.getElementById('scrapeModal');
+            const scrapeCancel = document.getElementById('scrapeCancel');
+            const scrapeFetch = document.getElementById('scrapeFetch');
+            const apiModal = document.getElementById('apiModal');
+            const apiCancel = document.getElementById('apiCancel');
+            const apiFetch = document.getElementById('apiFetch');
+            const dbModal = document.getElementById('dbModal');
+            const dbCancel = document.getElementById('dbCancel');
+
+            // --- State ---
+            let currentData = [];
+            let headers = [];
+            let chartInstances = [];
+            
+            // --- Dark Mode ---
+            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                moonIcon.classList.add('hidden');
+                sunIcon.classList.remove('hidden');
+            }
+            darkModeToggle.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                moonIcon.classList.toggle('hidden');
+                sunIcon.classList.toggle('hidden');
+                localStorage.setItem('color-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            });
+
+            // --- Event Listeners ---
+            uploadBtn.addEventListener('click', () => fileUploadInput.click());
+            scrapeBtn.addEventListener('click', () => scrapeModal.classList.remove('hidden'));
+            apiBtn.addEventListener('click', () => apiModal.classList.remove('hidden'));
+            dbBtn.addEventListener('click', () => dbModal.classList.remove('hidden'));
+            
+            scrapeCancel.addEventListener('click', () => scrapeModal.classList.add('hidden'));
+            apiCancel.addEventListener('click', () => apiModal.classList.add('hidden'));
+            dbCancel.addEventListener('click', () => dbModal.classList.add('hidden'));
+
+            scrapeFetch.addEventListener('click', scrapeWebDataWithDjango);
+            apiFetch.addEventListener('click', fetchApiDataClientSide);
+
+            fileUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (extension === 'csv') {
+                    Papa.parse(file, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => handleDataLoad(results.data, results.meta.fields, 'CSV')
+                    });
+                } else if (extension === 'xlsx') {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const data = new Uint8Array(event.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        handleDataLoad(jsonData, Object.keys(jsonData[0] || {}), 'Excel');
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    alert('সমর্থিত নয়। অনুগ্রহ করে CSV অথবা XLSX ফাইল আপলোড করুন।');
+                }
+            });
+            
+            analyzeButton.addEventListener('click', () => {
+                if (currentData.length === 0) {
+                    alert('অনুগ্রহ করে প্রথমে ডেটা লোড করুন।'); return;
+                }
+                if (userQuery.value.trim() === '') {
+                    alert('অনুগ্রহ করে আপনার প্রশ্ন লিখুন।'); return;
+                }
+                startAnalysis();
+            });
+
+            pdfBtn.addEventListener('click', async () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                const report = document.getElementById('reportOutput');
+
+                analyzeButton.disabled = true;
+                buttonText.textContent = 'Downloading PDF...';
+
+                try {
+                    const canvas = await html2canvas(report, { 
+                        scale: 2, 
+                        backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff' 
+                    });
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgProps = doc.getImageProperties(imgData);
+                    const pdfWidth = doc.internal.pageSize.getWidth() - 20;
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                    
+                    doc.addImage(imgData, 'PNG', 10, 10, pdfWidth, pdfHeight);
+                    doc.save('SmartDataAnalyst_Report.pdf');
+                } catch (e) {
+                    console.error("Error generating PDF:", e);
+                    alert("Could not generate PDF.");
+                } finally {
+                    analyzeButton.disabled = false;
+                    buttonText.textContent = 'বিশ্লেষণ করুন';
+                }
+            });
+
+            // --- Core Functions ---
+            function handleDataLoad(data, fields, format) {
+                currentData = data;
+                headers = fields;
+                updateDatasetInfo(format, currentData.length, headers.length);
+                displayDataPreview();
+                reportOutput.innerHTML = '';
+                initialMessage.style.display = 'flex';
+                downloadSection.classList.add('hidden');
+            }
+            
+            function displayDataPreview() {
+                const previewTable = document.getElementById('previewTable');
+                const dataPreview = document.getElementById('dataPreview');
+                previewTable.innerHTML = '';
+                if (currentData.length === 0) {
+                    dataPreview.classList.add('hidden');
+                    return;
+                }
+                
+                const thead = document.createElement('thead');
+                thead.className = "bg-gray-100 dark:bg-gray-700";
+                let headerRow = '<tr>';
+                headers.slice(0, 5).forEach(h => headerRow += `<th class="px-2 py-1">${h}</th>`);
+                headerRow += '</tr>';
+                thead.innerHTML = headerRow;
+                
+                const tbody = document.createElement('tbody');
+                let bodyHtml = '';
+                currentData.slice(0, 5).forEach(row => {
+                    let tableRow = '<tr>';
+                    headers.slice(0, 5).forEach(h => tableRow += `<td class="border-t px-2 py-1" style="border-color: var(--border-color);">${row[h] || ''}</td>`);
+                    tableRow += '</tr>';
+                    bodyHtml += tableRow;
+                });
+                tbody.innerHTML = bodyHtml;
+                
+                previewTable.appendChild(thead);
+                previewTable.appendChild(tbody);
+                dataPreview.classList.remove('hidden');
+            }
+
+            function updateDatasetInfo(format, rows, cols) {
+                document.getElementById('infoFormat').textContent = `ফরম্যাট: ${format}`;
+                document.getElementById('infoRows').textContent = `সারি: ${rows}`;
+                document.getElementById('infoCols').textContent = `কলাম: ${cols}`;
+                datasetInfo.classList.remove('hidden');
+            }
+
+            async function fetchApiDataClientSide() {
+                const apiUrl = document.getElementById('apiUrl').value;
+                const apiToken = document.getElementById('apiToken').value;
+                if (!apiUrl) { alert('Please enter an API URL.'); return; }
+                
+                apiModal.classList.add('hidden');
+                reportOutput.innerHTML = `<div class="flex items-center justify-center h-full"><div class="loader mr-2"></div><span>API থেকে ডেটা আনা হচ্ছে...</span></div>`;
+                initialMessage.style.display = 'none';
+
+                try {
+                    const options = {};
+                    if (apiToken) {
+                        options.headers = { 'Authorization': `Bearer ${apiToken}` };
+                    }
+                    const response = await fetch(apiUrl, options);
+                    if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                    
+                    const apiData = await response.json();
+                    
+                    let dataArray = [];
+                    if (apiData.products && Array.isArray(apiData.products)) dataArray = apiData.products;
+                    else if (apiData.users && Array.isArray(apiData.users)) dataArray = apiData.users;
+                    else if (apiData.data && Array.isArray(apiData.data)) dataArray = apiData.data;
+                    else if (Array.isArray(apiData)) dataArray = apiData;
+                    else throw new Error('Could not find a data array in the API response.');
+
+                    if (dataArray.length > 0) {
+                        const flatData = dataArray.map(row => {
+                            let flatRow = {};
+                            for (const key in row) {
+                                if (typeof row[key] === 'object' && row[key] !== null && !Array.isArray(row[key])) {
+                                    for (const subKey in row[key]) {
+                                         flatRow[`${key}_${subKey}`] = row[key][subKey];
+                                    }
+                                } else {
+                                    flatRow[key] = row[key];
+                                }
+                            }
+                            return flatRow;
+                        });
+                        handleDataLoad(flatData, Object.keys(flatData[0]), 'API');
+                    }
+                } catch (error) {
+                    reportOutput.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+                }
+            }
+
+            async function scrapeWebDataWithDjango() {
+                const url = document.getElementById('scrapeUrl').value;
+                if (!url) {
+                    alert('অনুগ্রহ করে একটি URL দিন।');
+                    return;
+                }
+                
+                scrapeModal.classList.add('hidden');
+                reportOutput.innerHTML = `<div class="flex items-center justify-center h-full"><div class="loader mr-2"></div><span>ওয়েবপেজ থেকে ডেটা আনা হচ্ছে...</span></div>`;
+                initialMessage.style.display = 'none';
+
+                try {
+                    const response = await fetch('/scrape/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ url: url })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `সার্ভার থেকে ত্রুটি: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+                    
+                    handleDataLoad(result.data, result.headers, 'ওয়েব স্ক্র্যাপ');
+
+                } catch (error) {
+                     reportOutput.innerHTML = `<p class="text-red-500 p-4">স্ক্রেপিং ব্যর্থ হয়েছে: ${error.message}</p>`;
+                }
+            }
+
+            async function startAnalysis() {
+                buttonText.textContent = 'বিশ্লেষণ চলছে...';
+                buttonLoader.classList.remove('hidden');
+                analyzeButton.disabled = true;
+                initialMessage.style.display = 'none';
+                reportOutput.innerHTML = `<div class="flex items-center justify-center h-full"><div class="loader"></div></div>`;
+                
+                chartInstances.forEach(chart => chart.destroy());
+                chartInstances = [];
+
+                await new Promise(resolve => setTimeout(resolve, 500)); 
+
+                const queries = userQuery.value.split('\n').filter(q => q.trim() !== '');
+                let allResults = [];
+
+                for (const query of queries) {
+                    const analysisPlan = dynamicAnalyzer(query, headers, currentData);
+                    const result = executePlan(analysisPlan, currentData);
+                    allResults.push({ query, plan: analysisPlan, result });
+                }
+                
+                displayFullReport(allResults);
+
+                buttonText.textContent = 'বিশ্লেষণ করুন';
+                buttonLoader.classList.add('hidden');
+                analyzeButton.disabled = false;
+                downloadSection.classList.remove('hidden');
+            }
+            
+            function dynamicAnalyzer(query, dataHeaders, data) {
+                const q = query.toLowerCase();
+                let plan = { type: 'unknown', column: null, limit: 10, direction: 'desc', chartType: 'bar' };
+
+                if (q.includes('pie chart') || q.includes('পাই চার্ট')) {
+                    plan.chartType = 'pie';
+                }
+
+                const headerMap = {
+                    'লিঙ্গ': 'Sex', 'পেশা': 'Job Title', 'দেশ': 'Country', 'শিল্প': 'Industry',
+                    'প্রতিষ্ঠা': 'Founded', 'সাল': 'Founded', 'কর্মী': 'Number of employees',
+                    'জন্ম': 'Date of birth', 'নাম': 'name', 'মূল্য': 'Price', 'দাম': 'price', 'ক্যাটাগরি': 'Category',
+                    'ব্র্যান্ড': 'Brand', 'ডোমেইন': 'Email', 'শহর': 'address_city', 'রেটিং': 'rating'
+                };
+
+                let targetHeader = null;
+                for (const bnTerm in headerMap) {
+                    if (q.includes(bnTerm)) {
+                        const enHeader = headerMap[bnTerm];
+                        const foundHeader = dataHeaders.find(h => h.toLowerCase().trim() === enHeader.toLowerCase().trim());
+                        if (foundHeader) {
+                            targetHeader = foundHeader;
+                            break;
+                        }
+                    }
+                }
+                if (!targetHeader) {
+                    for (const header of dataHeaders) {
+                        if (q.includes(header.toLowerCase().trim())) {
+                            targetHeader = header;
+                            break;
+                        }
+                    }
+                }
+                plan.column = targetHeader;
+                
+                const statsKeywords = { 'মোট': 'total', 'গড়': 'stats', 'average': 'stats', 'মিডিয়ান': 'stats', 'median': 'stats', 'মোড': 'stats', 'mode': 'stats' };
+                const groupKeywords = ['প্রতিটি', 'অনুযায়ী', 'ভিত্তিক', 'কতগুলো', 'সংখ্যা', 'count', 'how many'];
+                const sortKeywords = { 'বেশি': { dir: 'desc' }, 'কম': { dir: 'asc' }, 'দামী': { dir: 'desc' }, 'সস্তা': { dir: 'asc' } };
+
+                let operationFound = false;
+                for (const key in statsKeywords) {
+                    if (q.includes(key)) {
+                        plan.type = statsKeywords[key];
+                        operationFound = true;
+                        break;
+                    }
+                }
+                if (!operationFound) {
+                    for (const key in sortKeywords) {
+                        if (q.includes(key)) {
+                            plan.type = 'sort';
+                            plan.direction = sortKeywords[key].dir;
+                            operationFound = true;
+                            break;
+                        }
+                    }
+                }
+                if (!operationFound && groupKeywords.some(k => q.includes(k))) {
+                    plan.type = 'groupByCount';
+                    operationFound = true;
+                }
+                if (!operationFound && plan.column) {
+                     plan.type = isColumnNumeric(data, plan.column) ? 'stats' : 'groupByCount';
+                }
+                
+                plan.displayColumn = dataHeaders.find(h => h.toLowerCase().includes('name') || h.toLowerCase().includes('title')) || dataHeaders[0];
+                return plan;
+            }
+
+            function executePlan(plan, data) {
+                if (plan.type === 'total') return { total: data.length };
+                if (!plan.column) return null;
+
+                const cleanData = data.map(row => {
+                    const value = row[plan.column];
+                    const numericValue = typeof value === 'string' ? parseFloat(String(value).replace(/[^0-9.-]+/g,"")) : parseFloat(value);
+                    row._sortVal = isNaN(numericValue) ? value : numericValue;
+                    return row;
+                });
+
+                if (plan.type === 'stats') {
+                    const values = cleanData.map(row => row._sortVal).filter(v => typeof v === 'number');
+                    if (values.length === 0) return null;
+                    const sum = values.reduce((a, b) => a + b, 0);
+                    const avg = sum / values.length;
+                    return { average: avg, sum: sum, count: values.length };
+                }
+                if (plan.type === 'groupByCount') {
+                    const counts = cleanData.reduce((acc, row) => {
+                        const item = row[plan.column];
+                        if (item) acc[item] = (acc[item] || 0) + 1;
+                        return acc;
+                    }, {});
+                    return Object.entries(counts).sort(([,a],[,b]) => b-a);
+                }
+                if (plan.type === 'sort') {
+                    return cleanData.sort((a, b) => {
+                        if (plan.direction === 'asc') return a._sortVal > b._sortVal ? 1 : -1;
+                        return a._sortVal < b._sortVal ? 1 : -1;
+                    }).slice(0, plan.limit);
+                }
+                return null;
+            }
+
+            function isColumnNumeric(data, columnName) {
+                if (!data || data.length === 0 || !columnName) return false;
+                for (const row of data.slice(0, 5)) {
+                    const value = row[columnName];
+                    if (value && isNaN(parseFloat(String(value).replace(/,/g, '')))) return false;
+                }
+                return true;
+            }
+
+            function displayFullReport(allResults) {
+                reportOutput.innerHTML = `<h3 class="text-xl font-bold mb-4">বিশ্লেষণ রিপোর্ট</h3>`;
+                allResults.forEach(({ query, plan, result }, index) => {
+                    const resultContainer = document.createElement('div');
+                    resultContainer.className = 'p-4 border rounded-lg card';
+                    let content = `<p class="font-semibold mb-2">প্রশ্ন: "${query}"</p>`;
+
+                    if (!result) {
+                        content += `<p class="text-red-500">এই প্রশ্নের জন্য কোনো ফলাফল পাওয়া যায়নি।</p>`;
+                    } else if (plan.type === 'stats') {
+                        content += `<p>গড় ${plan.column}: <strong>${result.average.toFixed(2)}</strong></p>`;
+                    } else if (plan.type === 'groupByCount') {
+                        content += `<div><canvas id="chart-${index}"></canvas></div>`;
+                    } else if (plan.type === 'sort') {
+                        let tableRows = result.map(row => `<tr><td class="border-t px-4 py-2">${row[plan.displayColumn]}</td><td class="border-t px-4 py-2 text-center">${row[plan.column]}</td></tr>`).join('');
+                        content += `<table class="table-auto w-full text-sm"><thead><tr><th>${plan.displayColumn}</th><th>${plan.column}</th></tr></thead><tbody>${tableRows}</tbody></table>`;
+                    } else {
+                        content += `<p>${JSON.stringify(result)}</p>`;
+                    }
+                    
+                    resultContainer.innerHTML = content;
+                    reportOutput.appendChild(resultContainer);
+
+                    if (plan.type === 'groupByCount' && result && result.length > 0) {
+                        const ctx = document.getElementById(`chart-${index}`).getContext('2d');
+                        new Chart(ctx, { 
+                            type: plan.chartType, 
+                            data: { 
+                                labels: result.slice(0, 7).map(item => item[0]), 
+                                datasets: [{ 
+                                    label: 'সংখ্যা', 
+                                    data: result.slice(0, 7).map(item => item[1]), 
+                                    backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+                                }] 
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
