@@ -1,1 +1,14 @@
-pip freeze > requirements.txt
+asgiref==3.9.1
+beautifulsoup4==4.13.4
+certifi==2025.8.3
+charset-normalizer==3.4.2
+Django==5.2.5
+gunicorn==23.0.0
+idna==3.10
+packaging==25.0
+requests==2.32.4
+soupsieve==2.7
+sqlparse==0.5.3
+typing_extensions==4.14.1
+tzdata==2025.2
+urllib3==2.5.0
