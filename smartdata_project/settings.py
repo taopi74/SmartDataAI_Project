@@ -61,11 +61,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'smartdata_project.wsgi.application'
 
 # Database
-# Render-এর PostgreSQL ডাটাবেস ব্যবহার করার জন্য আপডেট করা হলো
+import dj_database_url
+
 DATABASES = {
     'default': dj_database_url.config(
         default='sqlite:///db.sqlite3',
-        conn_max_age=600
+        conn_max_age=600,
+        ssl_require=True
     )
 }
 
