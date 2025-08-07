@@ -3,6 +3,5 @@ beautifulsoup4
 requests
 gunicorn
 whitenoise
-dj-database-url
-dj-database-url
 psycopg2-binary
+
